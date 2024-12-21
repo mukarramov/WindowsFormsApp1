@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Google.Protobuf.WellKnownTypes;
 using MySql.Data.MySqlClient;
 using Mysqlx.Crud;
 using Mysqlx.Resultset;
@@ -134,9 +135,23 @@ namespace WindowsFormsApp1
                 MessageBox.Show($"total prise: {newtotalvalue}");
                 string allnewid = string.Join(",", allid);
                 string AllEachPrice1 = string.Join(", ", AllEachPrice);
+
+                int[] numbers = allnewid.Split(',')
+                             .Select(int.Parse)
+                             .ToArray();
+
                 MessageBox.Show("id: " + allnewid);
-                char[] intId = allnewid.ToCharArray();
-                MessageBox.Show($"{intId}");
+                
+
+                // var varId = allnewid.ToString();
+                //var intArray = varId.ToCharArray();
+
+                //MessageBox.Show($"{intArray}");
+
+                //int[] idArray= allnewid.Select(x => int.Parse(x.Trim())).ToArray();
+                //  idArray = allnewid.Select(x => int.Parse(x.Trim())).ToArray();
+                // char[] intId = allnewid.ToCharArray();
+                // MessageBox.Show("salom   " + idArray);
                 MessageBox.Show(AllEachPrice1);
                 conn.Open();
 
@@ -148,7 +163,7 @@ namespace WindowsFormsApp1
                 cmd.ExecuteNonQuery();
                 var id_sell = cmd.LastInsertedId;
 
-                foreach (var item in allnewid)
+                foreach (var item in numbers)
                 {
                     MessageBox.Show($"{item}");
 
