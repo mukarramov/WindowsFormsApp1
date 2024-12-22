@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Google.Protobuf.Compiler;
 using Google.Protobuf.WellKnownTypes;
 using MySql.Data.MySqlClient;
 using Mysqlx.Crud;
@@ -21,6 +22,8 @@ namespace WindowsFormsApp1
         {
             InitializeComponent();
         }
+
+        private List<Product> products = new List<Product>();
 
         MySqlConnection conn = new MySqlConnection("server=localhost;database=pharmacy;user=root;password=adminroot");
         string query = "";
@@ -78,106 +81,43 @@ namespace WindowsFormsApp1
 
         private void button2_Click(object sender, EventArgs e)
         {
-            panel1.Visible = true;
-            if (panel1.Visible)
-            {
-                button2.Visible = false;
-            }
+
         }
 
         private void button3_Click(object sender, EventArgs e)
         {
-            string textbox3text = textBox3.Text;
-            if (textBox3.Text.Length <= 0)
-            {
-                MessageBox.Show("textbox is empty!");
-                return;
-            }
-            var idvalue = string.Empty;
-            var pricevalue = string.Empty;
-            var PriceValue = string.Empty;
-            double totalValue = 0;
-            int[] allid = new int[dataGridView3.Rows.Count - 1]; // Исключаем строку для ввода
-            double[] AllEachPrice = new double[dataGridView3.Rows.Count - 1];
-            int DoubleIndex = 0;
-            int index = 0;
-            string namecostumer = textBox3.Text;
 
-            foreach (DataGridViewRow row in dataGridView3.Rows)
-            {
-                if (!row.IsNewRow)
-                {
-                    idvalue = row.Cells[0].Value.ToString(); //get first column's value;
-                    pricevalue = row.Cells[2].Value.ToString(); // get third column's value;
-                    PriceValue = row.Cells[2].Value.ToString(); // get third column's value;
-
-                    if (double.TryParse(pricevalue, out double price))
-                    {
-                        totalValue += price; // Накопляем сумму
-                    }
-
-                    if (int.TryParse(idvalue, out int idd))
-                    {
-                        allid[index] = idd;
-                        index++;
-                    }
-                    if (double.TryParse(PriceValue, out double price1))
-                    {
-                        AllEachPrice[DoubleIndex] = price1;
-                        DoubleIndex++;
-                    }
-                }
-            }
+            var totalPrice = products.Sum(p => p.Price);
 
             try
             {
-                double newtotalvalue = totalValue;
-                MessageBox.Show($"total prise: {newtotalvalue}");
-                string allnewid = string.Join(",", allid);
-                string AllEachPrice1 = string.Join(", ", AllEachPrice);
 
-                int[] numbers = allnewid.Split(',')
-                             .Select(int.Parse)
-                             .ToArray();
-
-                MessageBox.Show("id: " + allnewid);
-                
-
-                // var varId = allnewid.ToString();
-                //var intArray = varId.ToCharArray();
-
-                //MessageBox.Show($"{intArray}");
-
-                //int[] idArray= allnewid.Select(x => int.Parse(x.Trim())).ToArray();
-                //  idArray = allnewid.Select(x => int.Parse(x.Trim())).ToArray();
-                // char[] intId = allnewid.ToCharArray();
-                // MessageBox.Show("salom   " + idArray);
-                MessageBox.Show(AllEachPrice1);
                 conn.Open();
 
-                var customerId = GetCustomerId(textbox3text);
+                var customerId = GetCustomerId(textBox3.Text);
 
-                MySqlCommand cmd = new MySqlCommand("insert into sells (total_amount, id_customer)values (@newtotalvalue,@id_customer)", conn);
-                cmd.Parameters.AddWithValue("@newtotalvalue", newtotalvalue);
+                MySqlCommand cmd = new MySqlCommand("insert into sells (total_amount, id_customer)values (@totalValue,@id_customer)", conn);
+                cmd.Parameters.AddWithValue("@totalValue", totalPrice);
                 cmd.Parameters.AddWithValue("@id_customer", customerId);
                 cmd.ExecuteNonQuery();
                 var id_sell = cmd.LastInsertedId;
 
-                foreach (var item in numbers)
+                foreach (var item in products)
                 {
                     MessageBox.Show($"{item}");
 
-                    MySqlCommand cmd2 = new MySqlCommand($"INSERT INTO orderitems(id_sell, id_medicine, quatity, price) VALUES (@idSel, @idMed, 1, (SELECT price FROM medicines WHERE id = @idMed));", conn);
+                    MySqlCommand cmd2 = new MySqlCommand($"INSERT INTO orderitems(id_sell, id_medicine, quatity, price) VALUES (@idSel, @idMed, @quantity,@price );", conn);
                     cmd2.Parameters.AddWithValue("@idSel", id_sell);
-                    cmd2.Parameters.AddWithValue("@idMed", item);
+                    cmd2.Parameters.AddWithValue("@idMed", item.Id);
+                    cmd2.Parameters.AddWithValue("@quantity", item.Quantity);
+                    cmd2.Parameters.AddWithValue("@price", item.Price);
                     cmd2.ExecuteNonQuery();
                     MessageBox.Show("3work");
                 }
 
                 MessageBox.Show("success!");
                 textBox3.Clear();
-                panel1.Visible = false;
-
+                //panel1.Visible = false;
             }
             catch (Exception ex)
             {
@@ -220,7 +160,6 @@ namespace WindowsFormsApp1
         private void button4_Click(object sender, EventArgs e)
         {
 
-
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -229,7 +168,6 @@ namespace WindowsFormsApp1
             MySqlDataAdapter adapter = new MySqlDataAdapter(query, conn);
             DataTable dt = new DataTable();
             adapter.Fill(dt);
-
 
             try
             {
@@ -245,6 +183,7 @@ namespace WindowsFormsApp1
             {
                 conn.Close();
             }
+            //  panel1.Visible = true;
         }
 
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
@@ -277,35 +216,75 @@ namespace WindowsFormsApp1
 
             string selectinid = textBox4.Text;
 
+            conn.Open();
+
             string query = $"SELECT * FROM medicines WHERE id = {selectinid}";
 
-            MySqlDataAdapter adapter = new MySqlDataAdapter(query, conn);
-            DataTable newData = new DataTable();
-            adapter.Fill(newData);
+            MySqlCommand TestNameCmd = new MySqlCommand(query, conn);
+            var reader = TestNameCmd.ExecuteReader();
 
-            try
+            if (reader.HasRows)
             {
-                conn.Open();
+                reader.Read();
+                var CustomerId = reader.GetInt32(0);
 
-                if (dataGridView3.DataSource != null)
+                var medecineId = reader.GetInt32(0);
+                var price = reader.GetDouble(2);
+
+                if (products.FirstOrDefault(p => p.Id == medecineId) != null)
                 {
-                    DataTable existingData = (DataTable)dataGridView3.DataSource;
-                    existingData.Merge(newData);
+                    var product = products.FirstOrDefault(p => p.Id == medecineId);
+
+                    product.Quantity++;
+                    product.Price = product.Quantity * price;
                 }
                 else
                 {
-                    dataGridView3.DataSource = newData; // Если данных нет, просто присваиваем новые
+                    products.Add(new Product()
+                    {
+                        Id = medecineId,
+                        Name = reader.GetString(1),
+                        Price = price,
+                        Quantity = 1
+                    });
                 }
+
+                reader.Close();
+
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Error: " + ex.Message);
-            }
-            finally
-            {
-                conn.Close();
-                textBox4.Clear();
-            }
+
+            conn.Close();
+
+            var list = new BindingList<Product>(products);
+            dataGridView3.DataSource = list;
+
+            //MySqlDataAdapter adapter = new MySqlDataAdapter(query, conn);
+            //DataTable newData = new DataTable();
+            //adapter.Fill(newData);
+
+            //try
+            //{
+            //    conn.Open();
+
+            //    if (dataGridView3.DataSource != null)
+            //    {
+            //        DataTable existingData = (DataTable)dataGridView3.DataSource;
+            //        existingData.Merge(newData);
+            //    }
+            //    else
+            //    {
+            //        dataGridView3.DataSource = newData; // Если данных нет, просто присваиваем новые
+            //    }
+            //}
+            //catch (Exception ex)
+            //{
+            //    MessageBox.Show("Error: " + ex.Message);
+            //}
+            //finally
+            //{
+            //    conn.Close();
+            //    textBox4.Clear();
+            //}
         }
 
         private void dataGridView3_CellContentClick(object sender, DataGridViewCellEventArgs e)
@@ -363,6 +342,11 @@ namespace WindowsFormsApp1
         {
             Form3 form3 = new Form3();
             form3.Show();
+        }
+
+        private void panel2_Paint(object sender, PaintEventArgs e)
+        {
+
         }
     }
 }

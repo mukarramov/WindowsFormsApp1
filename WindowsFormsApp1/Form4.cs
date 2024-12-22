@@ -18,7 +18,7 @@ namespace WindowsFormsApp1
             InitializeComponent();
         }
 
-        MySqlConnection conn = new MySqlConnection("server=localhost;database=pharmacy;user=root;password=");
+        MySqlConnection conn = new MySqlConnection("server=localhost;database=pharmacy;user=root;password=adminroot");
         string query = "";
 
         private void button6_Click(object sender, EventArgs e)
@@ -38,19 +38,23 @@ namespace WindowsFormsApp1
                     conn.Open();
 
                     MySqlDataReader reader = comanda.ExecuteReader();
-
-                    if (reader.HasRows) // Проверка, есть ли результаты
+                    while (reader.Read())
                     {
-                        Form2 form2 = new Form2();
-                        form2.Show();
-                        MessageBox.Show("Salom");
-                    }
-                    else
-                    {
-                        MessageBox.Show("Неправильное имя или пароль");
-                    }
 
-                   
+
+                        if (reader.HasRows) // Проверка, есть ли результаты
+                        {
+                            Form2 form2 = new Form2();
+                            form2.Show();
+                            var nameAdmin = reader.GetString(0);
+                            MessageBox.Show("welcome" + nameAdmin);
+                        }
+                        else
+                        {
+                            MessageBox.Show("Неправильное имя или пароль");
+                        }
+
+                    }
                 }
             }
             catch (Exception ex)
